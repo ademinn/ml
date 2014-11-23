@@ -1,0 +1,14 @@
+[package]
+
+name = "ml"
+version = "0.0.1"
+authors = ["Andrey Demin <ademinn@gmail.com>"]
+
+[dependencies.scirust]
+
+git = "https://github.com/indigits/scirust.git"
+
+[[bin]]
+
+name = "knn"
+path = "src/knn/main.rs"
