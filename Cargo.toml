@@ -8,7 +8,16 @@ authors = ["Andrey Demin <ademinn@gmail.com>"]
 
 git = "https://github.com/indigits/scirust.git"
 
+[dependencies.GSL]
+
+git = "https://github.com/GuillaumeGomez/rust-GSL.git"
+
 [[bin]]
 
 name = "knn"
 path = "src/knn/main.rs"
+
+[[bin]]
+
+name = "linear"
+path = "src/linear/main.rs"
