@@ -1,4 +1,5 @@
 extern crate rgsl;
+extern crate common;
 
 use std::os;
 use std::io::BufferedReader;
@@ -11,26 +12,13 @@ use rgsl::blas::level1;
 use rgsl::blas::level2;
 use rgsl::cblas::Transpose;
 
+use common::gradient_descent;
+
 fn build_vector(data: &vec::Vec<f64>) -> VectorF64 {
     let result = VectorF64::from_slice(data.as_slice()).unwrap();
     result.add_constant(-result.min());
     result.scale(1.0f64 / result.max());
     return result
-}
-
-fn gradient_descent(x0: &VectorF64, lambda: f64, func: |&VectorF64| -> f64, grad: |&VectorF64| -> VectorF64, eps: f64) -> VectorF64 {
-    let mut x1 = x0.clone().unwrap();
-    loop {
-        let x2 = grad(&x1);
-        x2.scale(-lambda);
-        let xdiff = level1::dnrm2(&x2);
-        x2.add(&x1);
-        if (xdiff < eps) || ((func(&x2) - func(&x1)).abs() < eps) {
-            return x2
-        } else {
-            x1 = x2;
-        }
-    }
 }
 
 fn sum_vec(v: &VectorF64) -> f64 {
