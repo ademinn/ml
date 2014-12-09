@@ -21,3 +21,8 @@ path = "src/knn/main.rs"
 
 name = "linear"
 path = "src/linear/main.rs"
+
+[[bin]]
+
+name = "logistic"
+path = "src/logistic/main.rs"
