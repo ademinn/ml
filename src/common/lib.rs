@@ -1,6 +1,5 @@
 extern crate rgsl;
 use rgsl::types::vector::VectorF64;
-use rgsl::blas::level1;
 use std::num::Float;
 
 
@@ -9,9 +8,8 @@ pub fn gradient_descent(x0: &VectorF64, lambda: f64, func: |&VectorF64| -> f64, 
     loop {
         let x2 = grad(&x1);
         x2.scale(-lambda);
-        let xdiff = level1::dnrm2(&x2);
         x2.add(&x1);
-        if (xdiff < eps) || ((func(&x2) - func(&x1)).abs() < eps) {
+        if (func(&x2) - func(&x1)).abs() < eps {
             return x2
         } else {
             x1 = x2;

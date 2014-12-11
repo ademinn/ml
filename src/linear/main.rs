@@ -2,6 +2,7 @@ extern crate rgsl;
 extern crate common;
 
 use std::os;
+use std::rand::{task_rng, Rng};
 use std::io::BufferedReader;
 use std::io::File;
 use std::num::Float;
@@ -29,6 +30,19 @@ fn sum_vec(v: &VectorF64) -> f64 {
     return result
 }
 
+fn build_matrix(data: &[(f64, f64, f64)]) -> (MatrixF64, VectorF64) {
+    let x0 = VectorF64::new(data.len() as u64).unwrap();
+    x0.set_all(1.0f64);
+    let x1 = build_vector(&data.iter().map(|&(x1_e, _, _)| x1_e).collect::<vec::Vec<f64>>());
+    let x2 = build_vector(&data.iter().map(|&(_, x2_e, _)| x2_e).collect::<vec::Vec<f64>>());
+    let y = VectorF64::from_slice(data.iter().map(|&(_, _, y_e)| y_e).collect::<vec::Vec<f64>>().as_slice()).unwrap();
+    let f = MatrixF64::new(data.len() as u64, 3).unwrap();
+    f.set_col(0, &x0);
+    f.set_col(1, &x1);
+    f.set_col(2, &x2);
+    return (f, y)
+}
+
 fn main() {
     let args = os::args();
     assert_eq!(args.len(), 2);
@@ -37,11 +51,9 @@ fn main() {
 
     let dim = 3;
     let lambda = 0.01f64;
-    let eps = 0.00001f64;
+    let eps = 0.000001f64;
 
-    let mut x1_vec = vec::Vec::new();
-    let mut x2_vec = vec::Vec::new();
-    let mut y_vec = vec::Vec::new();
+    let mut data_vec = vec::Vec::new();
     for line in file.lines() {
         let line_str = line.unwrap();
         let elems = line_str.split_str(",").collect::<Vec<&str>>();
@@ -50,23 +62,22 @@ fn main() {
         let x1_elem = from_str::<f64>(elems[0]).unwrap();
         let x2_elem = from_str::<f64>(elems[1]).unwrap();
         let y_elem = from_str::<f64>(elems[2].trim()).unwrap();
-        x1_vec.push(x1_elem);
-        x2_vec.push(x2_elem);
-        y_vec.push(y_elem);
+        data_vec.push((x1_elem, x2_elem, y_elem));
     }
 
-    let n = x1_vec.len() as u64;
+    let mut data_slice = data_vec.as_mut_slice();
 
-    let x0 = VectorF64::new(n).unwrap();
-    x0.set_all(1.0f64);
-    let x1 = build_vector(&x1_vec);
-    let x2 = build_vector(&x2_vec);
-    let y = VectorF64::from_slice(y_vec.as_slice()).unwrap();
-    let f = MatrixF64::new(n, dim).unwrap();
-    f.set_col(0, &x0);
-    f.set_col(1, &x1);
-    f.set_col(2, &x2);
-    let f_orig = f.clone().unwrap();
+    let mut rng = task_rng();
+    rng.shuffle(data_slice);
+
+    let teach_len = (data_slice.len() * 4 / 5) as u64;
+    let validate_len = (data_slice.len() as u64) - teach_len;
+    
+    let (teach, validate) = data_slice.split_at(teach_len as uint);
+    let (f, y) = build_matrix(teach);
+
+    let (f_validate, y_validate) = build_matrix(validate);
+
     let func = |v: &VectorF64| -> f64 {
         let mut res = y.clone().unwrap();
         level2::dgemv(Transpose::NoTrans, 1.0f64, &f, v, -1.0f64, &mut res);
@@ -86,11 +97,13 @@ fn main() {
 
     let alpha = gradient_descent(&VectorF64::new(dim).unwrap(), lambda, func, grad, eps);
     println!("alpha = {}\n", alpha);
-    let mut y_predict = VectorF64::new(n).unwrap();
-    level2::dgemv(Transpose::NoTrans, 1.0f64, &f_orig, &alpha, 1.0f64, &mut y_predict);
-    let y_diff = y.clone().unwrap();
+    let mut y_predict = VectorF64::new(validate_len).unwrap();
+    level2::dgemv(Transpose::NoTrans, 1.0f64, &f_validate, &alpha, 1.0f64, &mut y_predict);
+    let y_diff = y_validate.clone().unwrap();
     y_diff.sub(&y_predict);
-    for i in range(0, n) {
-        println!("{} {} -> {} {}%", y.get(i), y_predict.get(i), y_diff.get(i), 100.0f64 * y_diff.get(i) / y.get(i));
+    let sigma = level1::dnrm2(&y_diff) / (validate_len as f64).sqrt();
+    println!("sigma = {}\n", sigma);
+    for i in range(0, validate_len) {
+        println!("{} {} -> {}%", y_validate.get(i), y_predict.get(i), 100.0f64 * y_diff.get(i).abs() / y_validate.get(i));
     }
 }
